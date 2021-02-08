@@ -10,6 +10,20 @@ const sn = require('servicenow-rest-api');
 // https://github.com/slackapi/bolt-js/issues/516
 const express = require('express')
 
+// Initialize your custom receiver
+const expressReceiver = new ExpressReceiver({
+  signingSecret: process.env.SLACK_SIGNING_SECRET,
+  processBeforeResponse: true
+});
+
+// Initializes your app with your bot token and the AWS Lambda ready receiver
+const app = new App({
+  token: process.env.SLACK_BOT_TOKEN,
+  receiver: expressReceiver
+});
+
+// Initialize your AWSServerlessExpress server using Bolt's ExpressReceiver
+const server = awsServerlessExpress.createServer(expressReceiver.app);
 
 
 /*
@@ -56,20 +70,6 @@ ServiceNow.createNewTask(incidentData, 'incident', res => {
 */
 
 
-// Initialize your custom receiver
-const expressReceiver = new ExpressReceiver({
-  signingSecret: process.env.SLACK_SIGNING_SECRET,
-  processBeforeResponse: true
-});
-
-// Initializes your app with your bot token and the AWS Lambda ready receiver
-const app = new App({
-  token: process.env.SLACK_BOT_TOKEN,
-  receiver: expressReceiver
-});
-
-// Initialize your AWSServerlessExpress server using Bolt's ExpressReceiver
-const server = awsServerlessExpress.createServer(expressReceiver.app);
 
 
 
@@ -81,9 +81,7 @@ app.command('/tiksu', async ({ ack, body, client }) => {
   // Acknowledge the command request
   await ack();
 
-  // ServiceNow
-  const ServiceNow = new sn(process.env.TIKSU_INSTANCE, process.env.TIKSU_USERID, process.env.TIKSU_PASSWORD);
-  ServiceNow.Authenticate();
+ 
 
   try {
     // Call views.open with the built-in client
@@ -96,18 +94,18 @@ app.command('/tiksu', async ({ ack, body, client }) => {
         "submit": {
           "type": "plain_text",
           "text": "Lähetä tiketti",
-          "emoji": true
+          "emoji": false
         },
         "close": {
           "type": "plain_text",
           "text": "Peruuta",
-          "emoji": true
+          "emoji": false
         },
         "callback_id": "view-new-incident",
         "title": {
           "type": "plain_text",
           "text": "Yle Service Desk",
-          "emoji": true
+          "emoji": false
         },
         "blocks": [
           {
@@ -152,14 +150,14 @@ app.command('/tiksu', async ({ ack, body, client }) => {
             "block_id": "u_app_or_prod_unit",
             "text": {
               "type": "mrkdwn",
-              "text": "Valitse järjestelmä jos se on tiedossa.\nJätä muussa tapauksessa tyhjäksi."
+              "text": "Valitse järjestelmä tai tuotantoyksikkö, jos tiedossa.\nJätä muussa tapauksessa tyhjäksi."
             },
             "accessory": {
               "type": "static_select",
               "placeholder": {
                 "type": "plain_text",
-                "text": "Select an item",
-                "emoji": true
+                "text": "Valitse...",
+                "emoji": false
               },
               "options": [
                 {
@@ -198,12 +196,13 @@ app.command('/tiksu', async ({ ack, body, client }) => {
   catch (error) {
     console.error(error);
   }
+
+   // ServiceNow
+   const ServiceNow = new sn(process.env.TIKSU_INSTANCE, process.env.TIKSU_USERID, process.env.TIKSU_PASSWORD);
+   await ServiceNow.Authenticate();
+
+   
 });
-
-
-
-
-
 
 
 
@@ -224,6 +223,36 @@ app.view('view-new-incident', async ({ ack, body, view, client }) => {
   console.log(u_app_or_prod_unit);
   console.log(short_description);
   console.log(description);
+
+
+
+
+
+
+const incidentData={
+  'caller_id':'antti.plathan@yle.fi',
+  'u_app_or_prod_unit':'Escenic',
+  'cmdb_ci':'Escenic MySQL',
+  'priority':'3 - Normal',
+  'short_description':'Testitiketti 1 Slackista REST-apin kautta.',
+  'assignment_group':'Service Desk',
+  'description':'Testitiketin pidempi kuvaus\r\n\r\nt. Antti'
+};
+
+/*
+# Toimii
+
+ServiceNow.createNewTask(incidentData, 'incident', res => {
+  console.log(res);
+});
+*/
+
+
+
+
+
+
+
 });
 
 
@@ -232,6 +261,6 @@ app.view('view-new-incident', async ({ ack, body, view, client }) => {
 
 // Handle the Lambda function event
 module.exports.handler = (event, context) => {
-  console.log('⚡️ Bolt app is running!');
+  console.log('yle-tiksuttelija-slack-app is running!');
   awsServerlessExpress.proxy(server, event, context);
 };
