@@ -10,9 +10,7 @@ const sn = require('servicenow-rest-api');
 // https://github.com/slackapi/bolt-js/issues/516
 const express = require('express')
 
-// ServiceNow
-const ServiceNow = new sn(process.env.TIKSU_INSTANCE, process.env.TIKSU_USERID, process.env.TIKSU_PASSWORD);
-ServiceNow.Authenticate();
+
 
 /*
 // Tämä toimii
@@ -58,23 +56,6 @@ ServiceNow.createNewTask(incidentData, 'incident', res => {
 */
 
 
-
-const incidentData={
-  'caller_id':'Antti Plathan',
-  'u_app_or_prod_unit':'Esko',
-  'cmdb_ci':'',
-  'priority':'3 - Normal',
-  'short_description':'Testitiketti 1 Slackista REST-apin kautta.',
-  'assignment_group':'Service Desk',
-  'description':'Testitiketin pidempi kuvaus\r\n\r\nt. Antti'
-};
-
-ServiceNow.createNewTask(incidentData, 'incident', res => {
-  console.log(res);
-});
-
-
-
 // Initialize your custom receiver
 const expressReceiver = new ExpressReceiver({
   signingSecret: process.env.SLACK_SIGNING_SECRET,
@@ -91,94 +72,162 @@ const app = new App({
 const server = awsServerlessExpress.createServer(expressReceiver.app);
 
 
-app.command('/tiksu', async ({ command, ack, say, client, body }) => {
+
+
+
+
+
+app.command('/tiksu', async ({ ack, body, client }) => {
+  // Acknowledge the command request
   await ack();
 
-  console.log("Tultiin komennon sisään.");
-  console.log(command);
-  console.log(command.text);
-  await say('Tähän tulee vastaus Tiksusta.');
+  // ServiceNow
+  const ServiceNow = new sn(process.env.TIKSU_INSTANCE, process.env.TIKSU_USERID, process.env.TIKSU_PASSWORD);
+  ServiceNow.Authenticate();
 
-
-
-  /*
-
-  // Parsitaan käyttäjän antamasta komennosta vain ensimmäinen parametri
-  const requestedPage = (command.text).split(' ')[0];
-  console.log(requestedPage);
-  // ttvPage pysyy falsena ellei pyynnöst löydy validia sivupyyntöä
-  var ttvPage = false;
-
-  // Löytyykö pyydetty sivu dictionarystä? Samalla se tarkoittaa myös sitä, että pyyntö ei ollut numero
-  if (requestedPage in pageDict) {
-    console.log("Sivu löytyy dictionarystä! Asetetaan näytettäväksi TTV-sivuksi:");
-    // Haetaan dictionarystä pyydettyä osastoa vastaava ttv-sivunumero
-    ttvPage = pageDict[requestedPage]; 
-    console.log(ttvPage);
-  } else if (isNaN(requestedPage)) {
-      // Jos pyyntö ei ole numero (ei ole suoraa testiä sille, että ON numero), ttvPage pysyy falsena ja käyttäjälle tullaan näyttämään helppi
-      console.log("Pyydetty sivu ei ole numero eikä kuulu tunnettujen osastojen joukkoon:");
-      console.log(requestedPage);
-      ttvPage = false; // Redundantti, mutta luettavuuden helpottamiseksi
-    } else {
-        // Nyt tiedetään, että pyyntö oli numero. Muutetaan se kokonaisluvuksi
-        const pageNumber = parseInt(requestedPage, 10);
-
-        // Ylen TTV:n sallitut sivunumerot ovat 100-899
-        if (pageNumber > 99 && pageNumber < 900) {
-          console.log("Sivunumero on sallituissa rajoissa.");
-          ttvPage = pageNumber; // Asetetaan haettava TTV-sivunumero
-        } else {
-          console.log("Sivunumero ei ole sallituissa rajoissa!");
-          ttvPage = false; // Redundantti, mutta luettavuuden helpottamiseksi
-        }
-      }
-     
-  
-  if (ttvPage) {
-    // Näytettävä sivu tiedetään, yritetään näyttää se
-    console.log("Perillä ollaan, yritetään näyttää pyydetty sivunumero: ");
-    console.log(ttvPage);
-
-    await say({
-      text: `https://external.api.yle.fi/v1/teletext/images/${ttvPage}/1.png?${process.env.TTV_API_KEY}`,
-      replace_original: false,
-      response_type: `ephemeral`,
-      unfurl_links: true,
-      unfurl_media: true
-    });
-  } else {
-    // Kelvollista TTV-sivua ei voitu asettaa, näytetään helppi käyttäjälle
-    console.log("Loppuun päädyttiin, mutta käyttäjän syötteestä ei tunnistettu oikeaa sivunumeroa tai osastoa, tai pyyntö oli help:")
-    console.log(ttvPage);
-
-    await say({
-      response_type: 'ephemeral',
-      text: 'Näin käytät /ttv -komentoa:',
-      attachments:[
+  try {
+    // Call views.open with the built-in client
+    const result = await client.views.open({
+      // Pass a valid trigger_id within 3 seconds of receiving it
+      trigger_id: body.trigger_id,
+      // View payload
+      view: {
+        "type": "modal",
+        "submit": {
+          "type": "plain_text",
+          "text": "Lähetä tiketti",
+          "emoji": true
+        },
+        "close": {
+          "type": "plain_text",
+          "text": "Peruuta",
+          "emoji": true
+        },
+        "callback_id": "view-new-incident",
+        "title": {
+          "type": "plain_text",
+          "text": "Yle Service Desk",
+          "emoji": true
+        },
+        "blocks": [
           {
-              text:'Anna haettavan TTV-sivun numero `/ttv 100` tai osaston nimi `/ttv kotimaa`.\nOsastojen nimet ovat `etusivu`, `hakemistot`, `kotimaa`, `ulkomaat`, `talous`, `sää`, `liikenne`, `urheilu`, `nhl`, `eurojalkapallo`, `veikkaus`, `tv-ohjelmat`, `ohjelmaopas`, `alueuutiset`, `news`, `svenska`, `viikkomakasiini`.\n'
-          }]
-    });    
+            "type": "section",
+            "text": {
+              "type": "mrkdwn",
+              "text": ":wave: Hei Antti!\n\n*Tarvitsetko apua tietokoneesi tai muun laitteen kanssa?*\n\nKuvaile ongelmasi tai kerro, kuinka voimme olla avuksi. Ylen Service Desk ottaa tikettisi käsittelyyn ja ohjaa sen sopivalle asiantuntijalle."
+            }
+          },
+          {
+            "type": "divider"
+          },
+          {
+            "type": "input",
+            "block_id": "short_description",
+            "element": {
+              "type": "plain_text_input",
+              "action_id": "short_description"
+            },
+            "label": {
+              "type": "plain_text",
+              "text": "Kirjoita tiketille lyhyt mutta selkeä otsikko.",
+              "emoji": false
+            }
+          },
+          {
+            "type": "input",
+            "block_id": "description",
+            "label": {
+              "type": "plain_text",
+              "text": "Kuvaile ongelma mahdollisimman yksityiskohtaisesti. Kerro kaikki mieleesi tulevat asiat, kuten miten ja milloin vika esiintyy, oletko kotona vai töissä, mitä konetta käytät, kiinteä vai langaton yhteys?",
+              "emoji": false
+            },
+            "element": {
+              "type": "plain_text_input",
+              "action_id": "description",
+              "multiline": true
+            }
+          },
+          {
+            "type": "section",
+            "block_id": "u_app_or_prod_unit",
+            "text": {
+              "type": "mrkdwn",
+              "text": "Valitse järjestelmä jos se on tiedossa.\nJätä muussa tapauksessa tyhjäksi."
+            },
+            "accessory": {
+              "type": "static_select",
+              "placeholder": {
+                "type": "plain_text",
+                "text": "Select an item",
+                "emoji": true
+              },
+              "options": [
+                {
+                  "text": {
+                    "type": "plain_text",
+                    "text": "Analytiikka",
+                    "emoji": true
+                  },
+                  "value": "Analytiikka"
+                },
+                {
+                  "text": {
+                    "type": "plain_text",
+                    "text": "Areena Bigscreen",
+                    "emoji": true
+                  },
+                  "value": "Areena Bigscreen"
+                },
+                {
+                  "text": {
+                    "type": "plain_text",
+                    "text": "Audiotuotanto",
+                    "emoji": true
+                  },
+                  "value": "Audiotuotanto"
+                }
+              ],
+              "action_id": "u_app_or_prod_unit"
+            }
+          }
+        ]
+      }
+    });
+    console.log(result);
   }
-
-  */
-
-
-
-
-});  
-
-
-
-
-
-// Tämä ei ole nyt käytössä, muista poistaa 
-// Listening get requests from external sources, mainly for testing
-expressReceiver.router.get('/test', (req, res) => {
-  // You're working with an express req and res now.
-  res.send('yay, get!');
+  catch (error) {
+    console.error(error);
+  }
 });
+
+
+
+
+
+
+
+
+
+
+// Handle a view_submission event
+app.view('view-new-incident', async ({ ack, body, view, client }) => {
+  // Acknowledge the view_submission event
+  await ack();
+
+  // Do whatever you want with the input data - here we're saving it to a DB then sending the user a verifcation of their submission
+
+  // Assume there's an input block with `block_1` as the block_id and `input_a`
+  const short_description = view['state']['values']['short_description']['short_description'];
+  const description = view['state']['values']['description']['description'];
+  const u_app_or_prod_unit = view['state']['values']['u_app_or_prod_unit']['u_app_or_prod_unit'];
+  //const user = body['user']['id'];
+  console.log(u_app_or_prod_unit);
+  console.log(short_description);
+  console.log(description);
+});
+
+
+
 
 
 // Handle the Lambda function event
