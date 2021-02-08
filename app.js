@@ -237,9 +237,11 @@ app.view('view-new-incident', async ({ ack, body, view, client }) => {
     };
     
     try{
-      await ServiceNow.createNewTask(incidentData, 'incident', res => {
-        console.log(res);
+      ServiceNow.createNewTask(incidentData, 'incident', res => {
+        var tiksu_response = res;
+        console.log(tiksu_response.sys_id);
         msg = 'Tiketin lähettäminen onnistui.';
+        //var tiksu_url = 'https://yletest.service-now.com/incident.do?sys_id=' + sys_id;
       });
     }
     catch (error) {
