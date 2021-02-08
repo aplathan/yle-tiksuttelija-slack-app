@@ -1,22 +1,49 @@
 // yle-tiksuttelija-slack-app
-// Antti Plathan 6 Feb 2021
+// Antti Plathan 8 Feb 2021
 // antti.plathan@gmail.com
 
 const { App, ExpressReceiver } = require('@slack/bolt');
 const awsServerlessExpress = require('aws-serverless-express');
+const sn = require('servicenow-rest-api');
 
 // Exposataan custom http routerin parserit (json...)
 // https://github.com/slackapi/bolt-js/issues/516
 const express = require('express')
 
+// ServiceNow
+const ServiceNow = new sn(process.env.TIKSU_INSTANCE,process.env.TIKSU_USERID,process.env.TIKSU_PASSWORD);
+ServiceNow.Authenticate();
+
+/*
+// Tämä toimii
+
+const fields=[
+  'number', 
+  'caller_id',
+  'u_app_or_prod_unit',
+  'cmdb_ci',
+  'priority', 
+  'short_description',
+  'assignment_group',
+  'description'
+];
+
+const filters=[
+  //'urgency=1'
+  //'caller_id=36f2d319ecb349004f8b8dc0c754ba25',
+  'number=INCYLE0547229'
+];
+
+ServiceNow.getTableData(fields,filters,'incident',function(res){
+  console.log(res);
+});
+*/
+
+
 
 // Initialize your custom receiver
 const expressReceiver = new ExpressReceiver({
   signingSecret: process.env.SLACK_SIGNING_SECRET,
-  // The `processBeforeResponse` option is required for all FaaS environments.
-  // It allows Bolt methods (e.g. `app.message`) to handle a Slack request
-  // before the Bolt framework responds to the request (e.g. `ack()`). This is
-  // important because FaaS immediately terminate handlers after the response.
   processBeforeResponse: true
 });
 
@@ -29,43 +56,18 @@ const app = new App({
 // Initialize your AWSServerlessExpress server using Bolt's ExpressReceiver
 const server = awsServerlessExpress.createServer(expressReceiver.app);
 
-// Luodaan dictionary sivujen hakusanoista ja niiden mäppäylsistä TTV-sivunmeroihin
-var pageDict = {
-  "etusivu": 100, 
-  "hakemistot": 199,
-  "kotimaa": 102,
-  "ulkomaat": 130,
-  "talous": 160,
-  "sää": 400,
-  "liikenne": 400,
-  "urheilu": 201,
-  "nhl": 235,
-  "änäri": 235,
-  "eurojalkapallo": 600,
-  "jalkapallo": 600,
-  "fudis": 600,
-  "veikkaus": 470,
-  "tv-ohjelmat": 300,
-  "tv": 300,
-  "ohjelmat": 300,
-  "ohjelmaopas": 350,
-  "opas": 350,
-  "alueuutiset": 500,
-  "news": 190,
-  "english": 190,
-  "newsinenglish": 190,
-  "svenska": 700,
-  "påsvenska": 700,
-  "viikkomakasiini": 800,
-  "viikko": 800,
-  "makasiini": 800
-};
 
 app.command('/tiksu', async ({ command, ack, say, client, body }) => {
   await ack();
 
+  console.log("Tultiin komennon sisään.");
   console.log(command);
   console.log(command.text);
+  await say('Tähän tulee vastaus Tiksusta.');
+
+
+
+  /*
 
   // Parsitaan käyttäjän antamasta komennosta vain ensimmäinen parametri
   const requestedPage = (command.text).split(' ')[0];
@@ -126,7 +128,9 @@ app.command('/tiksu', async ({ command, ack, say, client, body }) => {
     });    
   }
 
-  
+  */
+
+
 
 
 });  
