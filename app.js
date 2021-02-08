@@ -195,15 +195,7 @@ app.command('/tiksu', async ({ ack, body, client }) => {
     console.error(error);
   }
 
-  
-  // ServiceNow
-  const ServiceNow = new sn(process.env.TIKSU_INSTANCE, process.env.TIKSU_USERID, process.env.TIKSU_PASSWORD);
-  try {
-    await ServiceNow.Authenticate();
-  }
-  catch (error) {
-    console.error(error);
-  }
+
 
 
 });
@@ -217,21 +209,60 @@ app.view('view-new-incident', async ({ ack, body, view, client }) => {
   // Acknowledge the view_submission event
   await ack();
 
-  const userid = body['user']['id'];
+  const user_id = body['user']['id'];
   const short_description = view['state']['values']['short_description']['short_description'];
   const description = view['state']['values']['description']['description'];
   const u_app_or_prod_unit = view['state']['values']['u_app_or_prod_unit']['u_app_or_prod_unit'];
   
-  console.log(u_app_or_prod_unit.selected_option.value);
-  console.log(short_description.value);
-  console.log(description.value);
-  console.log(userid);
-
-
- 
-
+  // ServiceNow
+  const ServiceNow = new sn(process.env.TIKSU_INSTANCE, process.env.TIKSU_USERID, process.env.TIKSU_PASSWORD);
+  try {
+    await ServiceNow.Authenticate();
+  }
+  catch (error) {
+    console.error(error);
+  }
+  
+  try {
+    // Call the users.info method using the WebClient
+    const user = await client.users.profile.get({ user: user_id });
+    const email = user.profile.email;
+    console.log(email);
+  }
+  catch (error) {
+    console.error(error);
+  }
 
   
+
+
+
+
+
+
+
+
+
+
+  const incidentData={
+    'caller_id':'antti.plathan@yle.fi',
+    'u_app_or_prod_unit':'Escenic',
+    'cmdb_ci':'Escenic MySQL',
+    'priority':'3 - Normal',
+    'short_description':'Testitiketti 1 Slackista REST-apin kautta.',
+    'assignment_group':'Service Desk',
+    'description':'Testitiketin pidempi kuvaus\r\n\r\nt. Antti'
+  };
+
+
+
+
+
+
+
+
+
+
     // Message to send user
     let msg = '';
     // Save to DB
@@ -248,7 +279,7 @@ app.view('view-new-incident', async ({ ack, body, view, client }) => {
     // Message the user
     try {
       await client.chat.postMessage({
-        channel: userid,
+        channel: user_id,
         text: msg
       });
     }
@@ -257,15 +288,7 @@ app.view('view-new-incident', async ({ ack, body, view, client }) => {
     }
 
 
-const incidentData={
-  'caller_id':'antti.plathan@yle.fi',
-  'u_app_or_prod_unit':'Escenic',
-  'cmdb_ci':'Escenic MySQL',
-  'priority':'3 - Normal',
-  'short_description':'Testitiketti 1 Slackista REST-apin kautta.',
-  'assignment_group':'Service Desk',
-  'description':'Testitiketin pidempi kuvaus\r\n\r\nt. Antti'
-};
+
 
 /*
 # Toimii
