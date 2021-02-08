@@ -81,8 +81,6 @@ app.command('/tiksu', async ({ ack, body, client }) => {
   // Acknowledge the command request
   await ack();
 
- 
-
   try {
     // Call views.open with the built-in client
     const result = await client.views.open({
@@ -112,7 +110,7 @@ app.command('/tiksu', async ({ ack, body, client }) => {
             "type": "section",
             "text": {
               "type": "mrkdwn",
-              "text": ":wave: Hei Antti!\n\n*Tarvitsetko apua tietokoneesi tai muun laitteen kanssa?*\n\nKuvaile ongelmasi tai kerro, kuinka voimme olla avuksi. Ylen Service Desk ottaa tikettisi käsittelyyn ja ohjaa sen sopivalle asiantuntijalle."
+              "text": ":wave: Hei!\n\n*Tarvitsetko apua tietokoneesi tai muun laitteen kanssa?*\n\nKuvaile ongelmasi tai kerro, kuinka voimme olla avuksi. Ylen Service Desk ottaa tikettisi käsittelyyn ja ohjaa sen sopivalle asiantuntijalle."
             }
           },
           {
@@ -197,11 +195,17 @@ app.command('/tiksu', async ({ ack, body, client }) => {
     console.error(error);
   }
 
-   // ServiceNow
-   const ServiceNow = new sn(process.env.TIKSU_INSTANCE, process.env.TIKSU_USERID, process.env.TIKSU_PASSWORD);
-   await ServiceNow.Authenticate();
+  
+  // ServiceNow
+  const ServiceNow = new sn(process.env.TIKSU_INSTANCE, process.env.TIKSU_USERID, process.env.TIKSU_PASSWORD);
+  try {
+    await ServiceNow.Authenticate();
+  }
+  catch (error) {
+    console.error(error);
+  }
 
-   
+
 });
 
 
@@ -213,20 +217,44 @@ app.view('view-new-incident', async ({ ack, body, view, client }) => {
   // Acknowledge the view_submission event
   await ack();
 
-  // Do whatever you want with the input data - here we're saving it to a DB then sending the user a verifcation of their submission
-
-  // Assume there's an input block with `block_1` as the block_id and `input_a`
+  const userid = body['user']['id'];
   const short_description = view['state']['values']['short_description']['short_description'];
   const description = view['state']['values']['description']['description'];
   const u_app_or_prod_unit = view['state']['values']['u_app_or_prod_unit']['u_app_or_prod_unit'];
-  //const user = body['user']['id'];
-  console.log(u_app_or_prod_unit);
-  console.log(short_description);
-  console.log(description);
+  
+  console.log(u_app_or_prod_unit.selected_option.value);
+  console.log(short_description.value);
+  console.log(description.value);
+  console.log(userid);
 
 
+ 
 
 
+  
+    // Message to send user
+    let msg = '';
+    // Save to DB
+    //const results = await db.set(user.input, val);
+
+    //if (results) {
+    if (true) {  
+      // DB save was successful
+      msg = 'Tiketin lähettäminen onnistui.';
+    } else {
+      msg = 'Tiketin lähettäminen ei onnistunut.';
+    }
+
+    // Message the user
+    try {
+      await client.chat.postMessage({
+        channel: userid,
+        text: msg
+      });
+    }
+    catch (error) {
+      console.error(error);
+    }
 
 
 const incidentData={
