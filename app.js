@@ -194,14 +194,7 @@ app.command('/tiksu', async ({ ack, body, client }) => {
   catch (error) {
     console.error(error);
   }
-
-
-
-
 });
-
-
-
 
 
 // Handle a view_submission event
@@ -210,10 +203,10 @@ app.view('view-new-incident', async ({ ack, body, view, client }) => {
   await ack();
 
   const user_id = body['user']['id'];
-  const short_description = view['state']['values']['short_description']['short_description'];
-  const description = view['state']['values']['description']['description'];
-  const u_app_or_prod_unit = view['state']['values']['u_app_or_prod_unit']['u_app_or_prod_unit'];
-  
+  const short_description = (view['state']['values']['short_description']['short_description']).value;
+  const description = (view['state']['values']['description']['description']).value;
+  const u_app_or_prod_unit = (view['state']['values']['u_app_or_prod_unit']['u_app_or_prod_unit']).selected_option.value;
+
   // ServiceNow
   const ServiceNow = new sn(process.env.TIKSU_INSTANCE, process.env.TIKSU_USERID, process.env.TIKSU_PASSWORD);
   try {
@@ -223,85 +216,58 @@ app.view('view-new-incident', async ({ ack, body, view, client }) => {
     console.error(error);
   }
   
+  // Kysytään Slack API:lta käyttäjän profiilia ja sieltä sähköpostiosoite
   try {
-    // Call the users.info method using the WebClient
-    const user = await client.users.profile.get({ user: user_id });
-    const email = user.profile.email;
-    console.log(email);
+    var user = await client.users.profile.get({ user: user_id });
+    var user_email = user.profile.email;
   }
   catch (error) {
     console.error(error);
   }
 
-  
+  let msg = "foo";
+  // Tarkistetaan, onko tiketin tekijä yleläinen
+  if (user_email.endsWith("@yle.fi")) {
+     var incidentData={
+      'caller_id': user_email,
+      'u_app_or_prod_unit': u_app_or_prod_unit,
+      'short_description': short_description,
+      'assignment_group': 'Service Desk',
+      'description': description
+    };
 
-
-
-
-
-
-
-
-
-
-  const incidentData={
-    'caller_id':'antti.plathan@yle.fi',
-    'u_app_or_prod_unit':'Escenic',
-    'cmdb_ci':'Escenic MySQL',
-    'priority':'3 - Normal',
-    'short_description':'Testitiketti 1 Slackista REST-apin kautta.',
-    'assignment_group':'Service Desk',
-    'description':'Testitiketin pidempi kuvaus\r\n\r\nt. Antti'
-  };
-
-
-
-
-
-
-
-
-
-
-    // Message to send user
-    let msg = '';
-    // Save to DB
-    //const results = await db.set(user.input, val);
-
-    //if (results) {
-    if (true) {  
-      // DB save was successful
-      msg = 'Tiketin lähettäminen onnistui.';
-    } else {
-      msg = 'Tiketin lähettäminen ei onnistunut.';
-    }
-
-    // Message the user
-    try {
-      await client.chat.postMessage({
-        channel: user_id,
-        text: msg
+console.log(incidentData);
+console.log(user_email);
+console.log(u_app_or_prod_unit);
+console.log(short_description);
+console.log(description);
+/*
+    
+    try{
+      await ServiceNow.createNewTask(incidentData, 'incident', res => {
+        console.log(res);
+        msg = 'Tiketin lähettäminen onnistui.';
       });
     }
     catch (error) {
       console.error(error);
-    }
+      msg = 'Tiketin lähettäminen ei onnistunut.';
+    }*/
+  } else {
+    msg = 'Tiketin voi tehdä vain käyttäjä, jolla on Ylen sähköpostiosoite.';
+  }
 
 
-
-
-/*
-# Toimii
-
-ServiceNow.createNewTask(incidentData, 'incident', res => {
-  console.log(res);
-});
-*/
-
-
-
-
-
+  // Message the user
+  try {
+    await client.chat.postMessage({
+      channel: user_id,
+      text: msg
+    });
+  }
+  catch (error) {
+    console.error(error);
+  }
 
 
 });
@@ -315,3 +281,5 @@ module.exports.handler = (event, context) => {
   console.log('yle-tiksuttelija-slack-app is running!');
   awsServerlessExpress.proxy(server, event, context);
 };
+
+
