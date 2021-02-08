@@ -225,23 +225,16 @@ app.view('view-new-incident', async ({ ack, body, view, client }) => {
     console.error(error);
   }
 
-  let msg = "foo";
+  let msg = "";
   // Tarkistetaan, onko tiketin tekijä yleläinen
   if (user_email.endsWith("@yle.fi")) {
-     var incidentData={
+     const incidentData={
       'caller_id': user_email,
       'u_app_or_prod_unit': u_app_or_prod_unit,
       'short_description': short_description,
       'assignment_group': 'Service Desk',
       'description': description
     };
-
-console.log(incidentData);
-console.log(user_email);
-console.log(u_app_or_prod_unit);
-console.log(short_description);
-console.log(description);
-/*
     
     try{
       await ServiceNow.createNewTask(incidentData, 'incident', res => {
@@ -252,13 +245,13 @@ console.log(description);
     catch (error) {
       console.error(error);
       msg = 'Tiketin lähettäminen ei onnistunut.';
-    }*/
+    }
   } else {
     msg = 'Tiketin voi tehdä vain käyttäjä, jolla on Ylen sähköpostiosoite.';
   }
 
 
-  // Message the user
+  // Message the user*/
   try {
     await client.chat.postMessage({
       channel: user_id,
