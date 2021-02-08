@@ -11,20 +11,20 @@ const sn = require('servicenow-rest-api');
 const express = require('express')
 
 // ServiceNow
-const ServiceNow = new sn(process.env.TIKSU_INSTANCE,process.env.TIKSU_USERID,process.env.TIKSU_PASSWORD);
+const ServiceNow = new sn(process.env.TIKSU_INSTANCE, process.env.TIKSU_USERID, process.env.TIKSU_PASSWORD);
 ServiceNow.Authenticate();
 
 /*
 // Tämä toimii
 
 const fields=[
-  'number', 
-  'caller_id',
-  'u_app_or_prod_unit',
-  'cmdb_ci',
-  'priority', 
+  'number', // 'INCYLE0547229'
+  'caller_id', // display_value: 'Antti Plathan'
+  'u_app_or_prod_unit', // 'Escenic'
+  'cmdb_ci', // 'Escenic MySQL'
+  'priority', // '3 - Normal'
   'short_description',
-  'assignment_group',
+  'assignment_group', // 'Service Desk'
   'description'
 ];
 
@@ -38,6 +38,40 @@ ServiceNow.getTableData(fields,filters,'incident',function(res){
   console.log(res);
 });
 */
+
+/*
+# Toimii
+
+const incidentData={
+  'caller_id':'antti.plathan@yle.fi',
+  'u_app_or_prod_unit':'Escenic',
+  'cmdb_ci':'Escenic MySQL',
+  'priority':'3 - Normal',
+  'short_description':'Testitiketti 1 Slackista REST-apin kautta.',
+  'assignment_group':'Service Desk',
+  'description':'Testitiketin pidempi kuvaus\r\n\r\nt. Antti'
+};
+
+ServiceNow.createNewTask(incidentData, 'incident', res => {
+  console.log(res);
+});
+*/
+
+
+
+const incidentData={
+  'caller_id':'Antti Plathan',
+  'u_app_or_prod_unit':'Esko',
+  'cmdb_ci':'',
+  'priority':'3 - Normal',
+  'short_description':'Testitiketti 1 Slackista REST-apin kautta.',
+  'assignment_group':'Service Desk',
+  'description':'Testitiketin pidempi kuvaus\r\n\r\nt. Antti'
+};
+
+ServiceNow.createNewTask(incidentData, 'incident', res => {
+  console.log(res);
+});
 
 
 
