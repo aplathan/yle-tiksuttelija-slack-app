@@ -1,0 +1,22 @@
+# serverless.yml
+# https://www.serverless.com/framework/docs/providers/aws/guide/serverless.yml/
+service: yle-tiksuttelija-slack-app
+frameworkVersion: '2'
+provider:
+  name: aws
+  stage: dev
+  runtime: nodejs12.x
+  region: eu-west-1
+  environment:
+    SLACK_SIGNING_SECRET: ${env:SLACK_SIGNING_SECRET_TIKSUTTELIJA}
+    SLACK_BOT_TOKEN: ${env:SLACK_BOT_TOKEN_TIKSUTTELIJA}
+functions:
+  slack:
+    handler: app.handler
+    events:
+      - http:
+          path: slack/events
+          method: post
+plugins:
+  - serverless-offline
+

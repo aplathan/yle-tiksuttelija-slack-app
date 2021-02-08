@@ -1,0 +1,10 @@
+# node / npm
+node_modules/
+package-lock.json
+
+# Serverless
+.serverless
+
+# MacOS
+.DS_Store
+
