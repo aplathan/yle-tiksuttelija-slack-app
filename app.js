@@ -6,13 +6,13 @@ const { App, ExpressReceiver } = require('@slack/bolt');
 const awsServerlessExpress = require('aws-serverless-express');
 const sn = require('servicenow-rest-api');
 
-// Exposataan custom http routerin parserit (json...)
-// https://github.com/slackapi/bolt-js/issues/516
-const express = require('express')
-
 // Initialize your custom receiver
 const expressReceiver = new ExpressReceiver({
   signingSecret: process.env.SLACK_SIGNING_SECRET,
+  // The `processBeforeResponse` option is required for all FaaS environments.
+  // It allows Bolt methods (e.g. `app.message`) to handle a Slack request
+  // before the Bolt framework responds to the request (e.g. `ack()`). This is
+  // important because FaaS immediately terminate handlers after the response.
   processBeforeResponse: true
 });
 
@@ -24,6 +24,11 @@ const app = new App({
 
 // Initialize your AWSServerlessExpress server using Bolt's ExpressReceiver
 const server = awsServerlessExpress.createServer(expressReceiver.app);
+
+
+// pitääkö tämäkin initialisoida expressReceiverillä?
+// Initialize ServiceNow
+const ServiceNow = new sn(process.env.TIKSU_INSTANCE, process.env.TIKSU_USERID, process.env.TIKSU_PASSWORD);
 
 // Kuunnellaan /tiksu -läsykomentoa ja avatan käyttäjälle uusi modaali
 app.command('/tiksu', async ({ ack, body, client }) => {
@@ -150,7 +155,8 @@ app.command('/tiksu', async ({ ack, body, client }) => {
 app.view('view-new-incident', async ({ ack, body, view, client }) => {
   await ack();
 
-  const ServiceNow = new sn(process.env.TIKSU_INSTANCE, process.env.TIKSU_USERID, process.env.TIKSU_PASSWORD);
+  // const ServiceNow = new sn(process.env.TIKSU_INSTANCE, process.env.TIKSU_USERID, process.env.TIKSU_PASSWORD);
+
 
   // Aloitetaan Tiksuun autentikoituminen mahdollisimman varhaisessa vaiheessa
   try {
@@ -222,7 +228,7 @@ app.view('view-new-incident', async ({ ack, body, view, client }) => {
                   "type": "header",
                   "text": {
                     "type": "plain_text",
-                    "text": "Tiketistäsi on luotu uusi palvelupyyntösi Ylen Service Deskiin",
+                    "text": "Tiketistäsi on luotu uusi palvelupyyntö Ylen Service Deskiin",
                     "emoji": false
                   }
                 },
