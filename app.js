@@ -25,22 +25,6 @@ const app = new App({
 // Initialize your AWSServerlessExpress server using Bolt's ExpressReceiver
 const server = awsServerlessExpress.createServer(expressReceiver.app);
 
-/*
-const incidentData={
-  'caller_id':'antti.plathan@yle.fi',
-  'u_app_or_prod_unit':'Escenic',
-  'cmdb_ci':'Escenic MySQL',
-  'priority':'3 - Normal',
-  'short_description':'Testitiketti 1 Slackista REST-apin kautta.',
-  'assignment_group':'Service Desk',
-  'description':'Testitiketin pidempi kuvaus\r\n\r\nt. Antti'
-};
-
-ServiceNow.createNewTask(incidentData, 'incident', res => {
-  console.log(res);
-});
-*/
-
 // Kuunnellaan /tiksu -läsykomentoa ja avatan käyttäjälle uusi modaali
 app.command('/tiksu', async ({ ack, body, client }) => {
   await ack();
@@ -225,14 +209,73 @@ app.view('view-new-incident', async ({ ack, body, view, client }) => {
           var tiksu_response = res;
           var sys_id = tiksu_response.sys_id;
           var tiksu_id = tiksu_response.number;
+          var responseDescription = tiksu_response.short_description;
           var tiksu_url = 'https://yletest.service-now.com/incident.do?sys_id=' + sys_id;
           msg = 'Tiketin lähettäminen onnistui. Voit seurata tikettisi etenemistä Tiksussa: <' + tiksu_url + '|' + tiksu_id + '>';
-          // msg = 'Tiketin lähettäminen onnistui.';
-          
+
           try {
             client.chat.postMessage({
               channel: user_id,
-              text: msg
+              text: msg,
+              blocks: [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "Tiketistäsi on luotu uusi palvelupyyntösi Ylen Service Deskiin",
+                    "emoji": false
+                  }
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": tiksu_response.number + ': *<' + tiksu_url + '|' + tiksu_response.short_description + '>*'
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": '*Järjestelmä tai tuotantoyksikkö:*\n' + tiksu_response.u_app_or_prod_unit.display_value
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": '*Tiketti avattu:*\n' + tiksu_response.opened_at
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": '*Komponentti:*\n' + tiksu_response.cmdb_ci
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": '*Asiakas, jos tiedossa:*\n' + tiksu_response.caller_id.display_value
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": '*Palvelujono:*\n' + tiksu_response.assignment_group.display_value
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": '*Prioriteetti:*\n' + tiksu_response.priority
+                    }
+                  ]
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": tiksu_response.description
+                  }
+                }
+              ]
             });
           }
           catch (error) {
@@ -256,13 +299,7 @@ app.view('view-new-incident', async ({ ack, body, view, client }) => {
         }
       }
     }
-  
-
 });
-
-
-
-
 
 // Handle the Lambda function event
 module.exports.handler = (event, context) => {
