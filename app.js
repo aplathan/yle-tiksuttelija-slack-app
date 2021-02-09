@@ -25,35 +25,7 @@ const app = new App({
 // Initialize your AWSServerlessExpress server using Bolt's ExpressReceiver
 const server = awsServerlessExpress.createServer(expressReceiver.app);
 
-
 /*
-// Tämä toimii
-
-const fields=[
-  'number', // 'INCYLE0547229'
-  'caller_id', // display_value: 'Antti Plathan'
-  'u_app_or_prod_unit', // 'Escenic'
-  'cmdb_ci', // 'Escenic MySQL'
-  'priority', // '3 - Normal'
-  'short_description',
-  'assignment_group', // 'Service Desk'
-  'description'
-];
-
-const filters=[
-  //'urgency=1'
-  //'caller_id=36f2d319ecb349004f8b8dc0c754ba25',
-  'number=INCYLE0547229'
-];
-
-ServiceNow.getTableData(fields,filters,'incident',function(res){
-  console.log(res);
-});
-*/
-
-/*
-# Toimii
-
 const incidentData={
   'caller_id':'antti.plathan@yle.fi',
   'u_app_or_prod_unit':'Escenic',
@@ -69,16 +41,8 @@ ServiceNow.createNewTask(incidentData, 'incident', res => {
 });
 */
 
-
-
-
-
-
-
-
-
+// Kuunnellaan /tiksu -läsykomentoa ja avatan käyttäjälle uusi modaali
 app.command('/tiksu', async ({ ack, body, client }) => {
-  // Acknowledge the command request
   await ack();
 
   try {
@@ -189,7 +153,8 @@ app.command('/tiksu', async ({ ack, body, client }) => {
         ]
       }
     });
-    console.log(result);
+    // console.log(result); // tätä on turha enää logittaa
+    console.log('Modaali avattu onnistuneesti.')
   }
   catch (error) {
     console.error(error);
@@ -197,34 +162,117 @@ app.command('/tiksu', async ({ ack, body, client }) => {
 });
 
 
-// Handle a view_submission event
+// Handler for processing data sent from the new incident modal
 app.view('view-new-incident', async ({ ack, body, view, client }) => {
-  // Acknowledge the view_submission event
   await ack();
 
-  const user_id = body['user']['id'];
-  const short_description = (view['state']['values']['short_description']['short_description']).value;
-  const description = (view['state']['values']['description']['description']).value;
-  const u_app_or_prod_unit = (view['state']['values']['u_app_or_prod_unit']['u_app_or_prod_unit']).selected_option.value;
-
-  // ServiceNow
   const ServiceNow = new sn(process.env.TIKSU_INSTANCE, process.env.TIKSU_USERID, process.env.TIKSU_PASSWORD);
+
+  // Aloitetaan Tiksuun autentikoituminen mahdollisimman varhaisessa vaiheessa
   try {
-    await ServiceNow.Authenticate();
+    ServiceNow.Authenticate();
+    // Voiko tässäkin käyttää callback-funktiota? Tyyliin
+    // ServiceNow.Authenticate(res => { console.log(res) });
   }
   catch (error) {
     console.error(error);
   }
+
+  // Kerätään lomakkeella annetut tiedot
+  const user_id = body['user']['id'];
+  const short_description = view['state']['values']['short_description']['short_description'].value;
+  const description = view['state']['values']['description']['description'].value;
+  const u_app_or_prod_unit = view['state']['values']['u_app_or_prod_unit']['u_app_or_prod_unit']['selected_option'].value;
   
-  // Kysytään Slack API:lta käyttäjän profiilia ja sieltä sähköpostiosoite
+  // Kysytään Slack API:lta käyttäjän profiilia ja sieltä sähköpostiosoite. Näitä tietoja ei saa suoraan eventin mukana
   try {
     var user = await client.users.profile.get({ user: user_id });
     var user_email = user.profile.email;
+
+    // Nyt kaikki tarvittava tieto uutta tikettiä varten on kasassa
+    var newIncidentData={
+      'caller_id': user_email,
+      'u_app_or_prod_unit': u_app_or_prod_unit,
+      'short_description': short_description,
+      'assignment_group': 'Service Desk',
+      'description': description
+    };
+    console.log(newIncidentData);  
   }
   catch (error) {
     console.error(error);
   }
-//feikki, poista
+
+  let msg = "Jokin meni pieleen, koska tätä ei pitäisi koskaan nähdä.";
+  // Tiksu-tiketin voi tehdä vain yleläinen. Koska js on event-pohjainen, aloitetaan 
+  // nopeimmasta operaatiosta ja jätetään hidas rest-kutsu Tiksuun viimeiseksi.
+  if (!user_email.endsWith("@yle.fi")) {
+    msg = 'Tiketin voi tehdä vain käyttäjä, jolla on Ylen sähköpostiosoite.';
+
+    try {
+        client.chat.postMessage({
+          channel: user_id,
+          text: msg
+      });
+    }
+    catch (error) {
+      console.error(error);
+    }
+  } else {
+      // Eli nyt käyttäjällä tiedetään olevan yle-osoite
+      try{
+        ServiceNow.createNewTask(newIncidentData, 'incident', res => {
+          var tiksu_response = res;
+          var sys_id = tiksu_response.sys_id;
+          var tiksu_id = tiksu_response.number;
+          var tiksu_url = 'https://yletest.service-now.com/incident.do?sys_id=' + sys_id;
+          msg = 'Tiketin lähettäminen onnistui. Voit seurata tikettisi etenemistä Tiksussa: <' + tiksu_url + '|' + tiksu_id + '>';
+          // msg = 'Tiketin lähettäminen onnistui.';
+          
+          try {
+            client.chat.postMessage({
+              channel: user_id,
+              text: msg
+            });
+          }
+          catch (error) {
+            console.error(error);
+          }
+
+        });
+      }
+      catch (error) {
+        console.error(error);
+        msg = 'Tiketin lähettäminen ei onnistunut.';
+
+        try {
+          client.chat.postMessage({
+            channel: user_id,
+            text: msg
+          });
+        }
+        catch (error) {
+          console.error(error);
+        }
+      }
+    }
+  
+
+});
+
+
+
+
+
+// Handle the Lambda function event
+module.exports.handler = (event, context) => {
+  console.log('yle-tiksuttelija-slack-app is running!');
+  awsServerlessExpress.proxy(server, event, context);
+};
+
+
+/*
+
   let msg = "Tiketin lähettäminen onnistui.";
   // Tarkistetaan, onko tiketin tekijä yleläinen
   if (user_email.endsWith("@yle.fi")) {
@@ -254,29 +302,4 @@ app.view('view-new-incident', async ({ ack, body, view, client }) => {
     msg = 'Tiketin voi tehdä vain käyttäjä, jolla on Ylen sähköpostiosoite.';
   }
 
-
-  // Message the user*/
-  try {
-    await client.chat.postMessage({
-      channel: user_id,
-      text: msg
-    });
-  }
-  catch (error) {
-    console.error(error);
-  }
-
-
-});
-
-
-
-
-
-// Handle the Lambda function event
-module.exports.handler = (event, context) => {
-  console.log('yle-tiksuttelija-slack-app is running!');
-  awsServerlessExpress.proxy(server, event, context);
-};
-
-
+*/
