@@ -224,8 +224,8 @@ app.view('view-new-incident', async ({ ack, body, view, client }) => {
   catch (error) {
     console.error(error);
   }
-
-  let msg = "";
+//feikki, poista
+  let msg = "Tiketin lähettäminen onnistui.";
   // Tarkistetaan, onko tiketin tekijä yleläinen
   if (user_email.endsWith("@yle.fi")) {
      const incidentData={
@@ -239,9 +239,11 @@ app.view('view-new-incident', async ({ ack, body, view, client }) => {
     try{
       ServiceNow.createNewTask(incidentData, 'incident', res => {
         var tiksu_response = res;
-        console.log(tiksu_response.sys_id);
-        msg = 'Tiketin lähettäminen onnistui.';
+        //var sys_id = tiksu_response.sys_id;
+        //var tiksu_id = tiksu_response.number;
         //var tiksu_url = 'https://yletest.service-now.com/incident.do?sys_id=' + sys_id;
+        //msg = 'Tiketin lähettäminen onnistui. Voit seurata tikettisi etenemistä Tiksussa: <' + tiksu_url + '|' + tiksu_id + '>';
+        msg = 'Tiketin lähettäminen onnistui.';
       });
     }
     catch (error) {
