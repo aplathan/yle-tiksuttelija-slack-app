@@ -44,7 +44,7 @@ npm install
 
 ### 3. Testing locally
 
-Before deploying yle-ttv-slack-app to AWS it may be a good idea to test it locally to mamke sure everything works fine with your Slack workspace.
+Before deploying yle-tiksuttelija-slack-app to AWS it may be a good idea to test it locally to mamke sure everything works fine with your Slack workspace.
 
 ```zsh
 # Start the local deck
@@ -78,7 +78,7 @@ This version doesn't work correctly in AWS Lambda.
 
 Found a bug or have a question about this project? We'd love to hear from you!
 
-1. Browse to [aplathan/yle-ttv-slack-app/issues][4]
+1. Browse to [aplathan/yle-tiksuttelija-slack-app/issues][4]
 1. Create a new issue
 1. Select the `[x] examples` category
 
