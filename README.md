@@ -8,6 +8,10 @@ This Yle Tiksuttelija Slack App is Based on "Getting Started ⚡️ Bolt for Jav
 
 This is a Slack app built with the [Bolt for JavaScript framework][2]. When deployed with the included configuration, a CloudFormation Stack is created including the main app as an AWS Lambda Function, API Gateway for the requests from Slack, and CloudWatch Logs for monitoring the app.
 
+This screenshot shows the ticket creation modal and the message sent to the user after a ticket has succesfully been created.
+
+![Screenshot of a ticket creation modal and the message shown after a ticke has succesfully been created.](https://github.com/aplathan/yle-tiksuttelija-slack-app/blob/main/images/tiksuttelija-screenshot.png)
+
 ## Installing
 
 ### 1. Setup environment variables
