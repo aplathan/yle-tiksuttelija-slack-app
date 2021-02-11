@@ -25,7 +25,6 @@ const app = new App({
 // Initialize your AWSServerlessExpress server using Bolt's ExpressReceiver
 const server = awsServerlessExpress.createServer(expressReceiver.app);
 
-
 // pitääkö tämäkin initialisoida expressReceiverillä?
 // Initialize ServiceNow
 const ServiceNow = new sn(process.env.TIKSU_INSTANCE, process.env.TIKSU_USERID, process.env.TIKSU_PASSWORD);
@@ -154,9 +153,6 @@ app.command('/tiksu', async ({ ack, body, client }) => {
 // Handler for processing data sent from the new incident modal
 app.view('view-new-incident', async ({ ack, body, view, client }) => {
   await ack();
-
-  // const ServiceNow = new sn(process.env.TIKSU_INSTANCE, process.env.TIKSU_USERID, process.env.TIKSU_PASSWORD);
-
 
   // Aloitetaan Tiksuun autentikoituminen mahdollisimman varhaisessa vaiheessa
   try {
@@ -312,37 +308,3 @@ module.exports.handler = (event, context) => {
   console.log('yle-tiksuttelija-slack-app is running!');
   awsServerlessExpress.proxy(server, event, context);
 };
-
-
-/*
-
-  let msg = "Tiketin lähettäminen onnistui.";
-  // Tarkistetaan, onko tiketin tekijä yleläinen
-  if (user_email.endsWith("@yle.fi")) {
-     const incidentData={
-      'caller_id': user_email,
-      'u_app_or_prod_unit': u_app_or_prod_unit,
-      'short_description': short_description,
-      'assignment_group': 'Service Desk',
-      'description': description
-    };
-    
-    try{
-      ServiceNow.createNewTask(incidentData, 'incident', res => {
-        var tiksu_response = res;
-        //var sys_id = tiksu_response.sys_id;
-        //var tiksu_id = tiksu_response.number;
-        //var tiksu_url = 'https://yletest.service-now.com/incident.do?sys_id=' + sys_id;
-        //msg = 'Tiketin lähettäminen onnistui. Voit seurata tikettisi etenemistä Tiksussa: <' + tiksu_url + '|' + tiksu_id + '>';
-        msg = 'Tiketin lähettäminen onnistui.';
-      });
-    }
-    catch (error) {
-      console.error(error);
-      msg = 'Tiketin lähettäminen ei onnistunut.';
-    }
-  } else {
-    msg = 'Tiketin voi tehdä vain käyttäjä, jolla on Ylen sähköpostiosoite.';
-  }
-
-*/
