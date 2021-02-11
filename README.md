@@ -10,6 +10,8 @@ This is a Slack app built with the [Bolt for JavaScript framework][2]. When depl
 
 This screenshot shows the ticket creation modal and the message sent to the user after a ticket has succesfully been created.
 
+Ticket creation is launched using a slash command that is defined in Slack App configuration. This example uses /tiksu.
+
 ![Screenshot of a ticket creation modal and the message shown after a ticke has succesfully been created.](https://github.com/aplathan/yle-tiksuttelija-slack-app/blob/main/images/tiksuttelija-screenshot.png)
 
 ## Installing
