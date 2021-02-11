@@ -1,4 +1,4 @@
-# yle-ttv-slack-app
+# yle-tiksuttelija-slack-app
 
 This Yle Tiksuttelija Slack App is Based on "Getting Started ⚡️ Bolt for JavaScript tutorial. This is a private project that has no direct ties with Yleisradio Oy with the exception that it has some customizations for the ServiceNow instance used by Yle.
 
