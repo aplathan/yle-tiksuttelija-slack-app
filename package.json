@@ -1,7 +1,7 @@
 {
   "name": "yle-tiksuttelija-slack-app",
   "version": "0.1.0",
-  "description": "Simple Slack app that interface with Tiksu.",
+  "description": "Simple Slack app that interfaces with Tiksu.",
   "main": "app.js",
   "scripts": {
     "ngrok": "ngrok http 3000",
@@ -11,7 +11,8 @@
   "license": "MIT",
   "dependencies": {
     "@slack/bolt": "^2.7.0",
-    "aws-serverless-express": "^3.4.0"
+    "aws-serverless-express": "^3.4.0",
+    "servicenow-rest-api": "^1.2.1"
   },
   "devDependencies": {
     "serverless-offline": "^6.8.0"

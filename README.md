@@ -1,6 +1,6 @@
 # yle-ttv-slack-app
 
-This Yle TTV Slack App is Based on "Getting Started ⚡️ Bolt for JavaScript tutorial. This is a private project that has no ties with Yleisradio Oy with the exception that is uses Yle's public API to fetch Yle Teksti-TV pages. The Yle in the project name simply implies that instead of being a generic Teletext app this can only be used to view comtent from Yle.
+This Yle Tiksuttelija Slack App is Based on "Getting Started ⚡️ Bolt for JavaScript tutorial. This is a private project that has no direct ties with Yleisradio Oy with the exception that it has some customizations for the ServiceNow instance used by Yle.
 
 > Slack app example from 📚 [Getting started with Bolt for JavaScript tutorial][1]
 
@@ -12,29 +12,29 @@ This is a Slack app built with the [Bolt for JavaScript framework][2]. When depl
 
 ### 1. Setup environment variables
 
-Before using the app, you must get Yle's API keys from [Yle Developer Site][5]. Read and accept Yle's API license terms, and [order keys for Yle External API][6] (registration needed).
-
 ```zsh
 # Replace with your signing secret and token
 export SLACK_BOT_TOKEN=<your-bot-token>
 export SLACK_SIGNING_SECRET=<your-signing-secret>
-export TTV_API_KEY=<your Yle API keys>
+export TIKSU_INSTANCE=<your-service-now-host.service-now.com>
+export TIKSU_USERID=<ServiceNow-user-for-integration>
+export TIKSU_PASSWORD=<ServiceNow-password-for-integration>
 ```
 
 ### 2. Setup your local project and Serverless Framework
 
 ```zsh
 # Clone this project onto your machine
-git clone https://github.com/aplathan/yle-ttv-slack-app.git
+git clone https://github.com/aplathan/yle-tiksuttelija-slack-app.git
 
 # Change into the project
-cd yle-ttv-slack-app/
+cd yle-tiksuttelija-slack-app/
 
 # Install the dependencies
 npm install
 ```
 
-[Install Serverless][7] with your preferred method. Note that running Serverless with Node (npx serverless deploy) is very slow compared to running it netively (serverless deploy).
+[Install Serverless][5] with your preferred method. Note that running Serverless with Node (npx serverless deploy) is very slow compared to running it netively (serverless deploy).
 
 ### 3. Testing locally
 
@@ -64,7 +64,7 @@ https://<randomly-generated-hostname>.ngrok.io/slack/events
 
 ## Deploying to AWS via CloudFormation
 
-The sls deploy command deploys your entire service via CloudFormation. Run this command when you have made infrastructure changes (i.e., you edited serverless.yml). Use serverless deploy function -f myFunction when you have made code changes and you want to quickly upload your updated code to AWS Lambda or just change function configuration.
+This version doesn't work correctly in AWS Lambda.
 
 ## Contributing
 
@@ -81,7 +81,5 @@ See you there and thanks for helping to improve Bolt for everyone!
 [1]: https://slack.dev/bolt-js/tutorial/getting-started
 [2]: https://slack.dev/bolt-js
 [3]: https://slack.dev/bolt-js/tutorial/getting-started#setting-up-events
-[4]: https://github.com/aplathan/yle-ttv-slack-app/issues/new
-[5]: https://developer.yle.fi/en/index.html
-[6]: https://tunnus.yle.fi/api-avaimet
-[7]: https://www.serverless.com/framework/docs/getting-started/
+[4]: https://github.com/aplathan/yle-tiksuttelija-slack-app/issues/new
+[5]: https://www.serverless.com/framework/docs/getting-started/
