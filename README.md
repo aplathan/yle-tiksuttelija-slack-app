@@ -18,6 +18,8 @@ Ticket creation is launched using a slash command that is defined in Slack App c
 
 ### 1. Setup environment variables
 
+Note: Do not use production Tiksu, i.e., https://yle.service-now.com/. Instead, develop and test against the test environment, https://yletest.service-now.com/. Tiksu username and password are your personal AD credentials unless you have special integration credentials, so keep them safe and make sure they cannot be seen when the code is deployed.
+
 ```zsh
 # Replace with your signing secret and token
 export SLACK_BOT_TOKEN=<your-bot-token>
@@ -40,7 +42,7 @@ cd yle-tiksuttelija-slack-app/
 npm install
 ```
 
-[Install Serverless][5] with your preferred method. Note that running Serverless with Node (npx serverless deploy) is very slow compared to running it netively (serverless deploy).
+[Install Serverless][4] with your preferred method. Note that running Serverless with Node (npx serverless deploy) is very slow compared to running it netively (serverless deploy).
 
 ### 3. Testing locally
 
@@ -72,20 +74,8 @@ https://<randomly-generated-hostname>.ngrok.io/slack/events
 
 This version doesn't work correctly in AWS Lambda.
 
-## Contributing
-
-### Issues and questions
-
-Found a bug or have a question about this project? We'd love to hear from you!
-
-1. Browse to [aplathan/yle-tiksuttelija-slack-app/issues][4]
-1. Create a new issue
-1. Select the `[x] examples` category
-
-See you there and thanks for helping to improve Bolt for everyone!
 
 [1]: https://github.com/aplathan
 [2]: https://slack.dev/bolt-js
 [3]: https://slack.dev/bolt-js/tutorial/getting-started#setting-up-events
-[4]: https://github.com/aplathan/yle-tiksuttelija-slack-app/issues/new
-[5]: https://www.serverless.com/framework/docs/getting-started/
+[4]: https://www.serverless.com/framework/docs/getting-started/
