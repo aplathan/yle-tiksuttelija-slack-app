@@ -1,8 +1,8 @@
 # yle-tiksuttelija-slack-app
 
-At the time of forking this repo under Yleisradio account, the app is designed to be deployed using Serverless to AWS Lambda. However, [author's][1] intention is to use this as a tool to learn how code is written for Yle's AWS environment, and how deployments are managed using Terraform.
+This Yle Tiksuttelija Slack App is Based on "Getting Started ⚡️ Bolt for JavaScript tutorial. This is a private project that has no direct ties with Yleisradio Oy with the exception that it has some customizations for the ServiceNow instance used by Yle.
 
-It is likely that other individuals and teams will have similar needs for simple Slack Apps in Yle Slack Workspace. The author is an amateur and has no prior first-hand experience in any of the DevOps practices required from developers working for Yle. This experiment will document what information was needed, and where this information can be found, to allow an inexperienced person to develop, test and deploy a working production quality service into a mature IaC environment.
+> Slack app example from 📚 [Getting started with Bolt for JavaScript tutorial][1]
 
 ## Overview
 
@@ -12,13 +12,11 @@ This screenshot shows the ticket creation modal and the message sent to the user
 
 Ticket creation is launched using a slash command that is defined in Slack App configuration. This example uses /tiksu.
 
-![Screenshot of a ticket creation modal and the message shown after a ticke has succesfully been created.](https://github.com/Yleisradio/yle-tiksuttelija-slack-app/blob/main/images/tiksuttelija-screenshot.png)
+![Screenshot of a ticket creation modal and the message shown after a ticke has succesfully been created.](https://github.com/aplathan/yle-tiksuttelija-slack-app/blob/main/images/tiksuttelija-screenshot.png)
 
 ## Installing
 
 ### 1. Setup environment variables
-
-Note: Do not use production Tiksu, i.e., https://yle.service-now.com/. Instead, develop and test against the test environment, https://yletest.service-now.com/. Tiksu username and password are your personal AD credentials unless you have special integration credentials, so keep them safe and make sure they cannot be seen when the code is deployed.
 
 ```zsh
 # Replace with your signing secret and token
@@ -42,7 +40,7 @@ cd yle-tiksuttelija-slack-app/
 npm install
 ```
 
-[Install Serverless][4] with your preferred method. Note that running Serverless with Node (npx serverless deploy) is very slow compared to running it netively (serverless deploy).
+[Install Serverless][5] with your preferred method. Note that running Serverless with Node (npx serverless deploy) is very slow compared to running it netively (serverless deploy).
 
 ### 3. Testing locally
 
@@ -74,8 +72,20 @@ https://<randomly-generated-hostname>.ngrok.io/slack/events
 
 This version doesn't work correctly in AWS Lambda.
 
+## Contributing
 
-[1]: https://github.com/aplathan
+### Issues and questions
+
+Found a bug or have a question about this project? We'd love to hear from you!
+
+1. Browse to [aplathan/yle-tiksuttelija-slack-app/issues][4]
+1. Create a new issue
+1. Select the `[x] examples` category
+
+See you there and thanks for helping to improve Bolt for everyone!
+
+[1]: https://slack.dev/bolt-js/tutorial/getting-started
 [2]: https://slack.dev/bolt-js
 [3]: https://slack.dev/bolt-js/tutorial/getting-started#setting-up-events
-[4]: https://www.serverless.com/framework/docs/getting-started/
+[4]: https://github.com/aplathan/yle-tiksuttelija-slack-app/issues/new
+[5]: https://www.serverless.com/framework/docs/getting-started/
