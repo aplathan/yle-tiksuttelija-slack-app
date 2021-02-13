@@ -3,7 +3,6 @@
 const { App, ExpressReceiver } = require('@slack/bolt');
 const awsServerlessExpress = require('aws-serverless-express');
 const axios = require('axios').default;
-//const awsServerlessExpressMiddleware = require('aws-serverless-express/middleware');
 //const sn = require('servicenow-rest-api');
 
 // Initialize your custom receiver
@@ -25,56 +24,14 @@ const app = new App({
 // Initialize your AWSServerlessExpress server using Bolt's ExpressReceiver
 const server = awsServerlessExpress.createServer(expressReceiver.app);
 
-// Getting the API Gateway event object
-//app.use(awsServerlessExpressMiddleware.eventContext());
-//var aws_event = req.apiGateway.event;
-//var aws_context = req.apiGateway.context;
-//console.log('aws_event:');
-//console.log(aws_event);
-//console.log('aws_context:');
-//console.log(aws_context);
-/*
-
-
-https://stackoverflow.com/questions/61001210/https-get-request-from-within-a-lambda-function-for-slack-bot
-
-
-
-*/
-/*
-// Middleware to enrich context object that is available to all listeners
-async function enrichContext({ payload, client, context, next }) {
-  // https://api.slack.com/methods/users.profile.get
-  const user = await client.users.profile.get({ user: payload.user_id });
-  
-  console.log('Context ennen middlewaren lisäyksiä:');
-  console.log(context);
-
-  context.email = user.profile.email;
-  context.real_name = user.profile.real_name;
-  context.TIKSU_USERID = process.env.TIKSU_USERID;
-  context.TIKSU_PASSWORD = process.env.TIKSU_PASSWORD;
-  context.TIKSU_INSTANCE = process.env.TIKSU_INSTANCE;
-
-  console.log('Context middlewaren käpälöinnin jälkeen:');
-  console.log(context);
-
-  // Pass control to the next middleware function
-  await next();
-}
-*/
-
-
 // Bolt method to handle incoming Slack command event. A new modal view is created as a response.
 app.command('/tiksu', async ({ ack, body, client }) => {
   await ack();
 
   try {
-    // Call views.open with the built-in client
     const result = await client.views.open({
       // Pass a valid trigger_id within 3 seconds of receiving it
       trigger_id: body.trigger_id,
-      // View payload
       view: {
         "type": "modal",
         "submit": {
@@ -177,8 +134,6 @@ app.command('/tiksu', async ({ ack, body, client }) => {
         ]
       }
     });
-    // console.log(result); // tätä on turha enää logittaa
-    console.log('Modaali avattu onnistuneesti.')
   }
   catch (error) {
     console.error(error);
@@ -194,12 +149,12 @@ app.view('view-new-incident', async ({ ack, body, view, client }) => {
   // View object is a dictionary consisting of modal's [block_id](s) and [action_id](s)
   // Figuring out the data model can be a little trial and error, as the view payload's
   // json may contain both simple key-value pairs, but also objects as the values.
-  const user_id = body['user']['id'];
   const short_description = view['state']['values']['short_description']['short_description'].value;
   const description = view['state']['values']['description']['description'].value;
   const u_app_or_prod_unit = view['state']['values']['u_app_or_prod_unit']['u_app_or_prod_unit']['selected_option'].value;
   
   // Full Slack user profile, we need this to get user's email address
+  const user_id = body['user']['id'];
   const user = await client.users.profile.get({ user: user_id });
 
   const newIncidentData = {
@@ -213,7 +168,6 @@ app.view('view-new-incident', async ({ ack, body, view, client }) => {
   let msg = "Jokin meni pieleen, koska tätä ei pitäisi koskaan nähdä.";
   // Tiksu-tiketin voi tehdä vain yleläinen. Koska js on event-pohjainen, aloitetaan 
   // nopeimmasta operaatiosta ja jätetään hidas rest-kutsu Tiksuun viimeiseksi.
-  // if (!user_email.endsWith("@yle.fi")) {
   if (!user.profile.email.endsWith("@yle.fi")) {
     msg = 'Tiketin voi tehdä vain käyttäjä, jolla on Ylen sähköpostiosoite.';
 
@@ -230,7 +184,6 @@ app.view('view-new-incident', async ({ ack, body, view, client }) => {
       // Eli nyt käyttäjällä tiedetään olevan yle-osoite
       try {
         const options = {
-            // url:'https://' + process.env.TIKSU_INSTANCE + '/api/now/table/incident?sysparm_input_display_value=true&sysparm_display_value=true',
             url:'https://' + process.env.TIKSU_INSTANCE + '/api/now/table/incident?sysparm_input_display_value=true&sysparm_display_value=true',
             method:'post',
             headers:{
@@ -246,7 +199,7 @@ app.view('view-new-incident', async ({ ack, body, view, client }) => {
         // Tämä on varsinainen kutsu ServiceNowiin
         var tiksu_res = await axios(options);
         var res = tiksu_res.data.result;
-        console.log(res);
+        // console.log(res);
 
         var tiksu_url = 'https://yletest.service-now.com/incident.do?sys_id=' + res.sys_id;
         msg = 'Tiketin lähettäminen onnistui. Voit seurata tikettisi etenemistä Tiksussa: <' + tiksu_url + '|' + res.number + '>';
@@ -330,15 +283,10 @@ app.view('view-new-incident', async ({ ack, body, view, client }) => {
             console.error(error);
           }
         }
-
-
       } catch (err) {
           console.error(err);
       }
-
     }
-
-
 });
 
 // Handle the Lambda function event
