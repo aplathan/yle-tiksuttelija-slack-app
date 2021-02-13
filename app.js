@@ -1,10 +1,9 @@
-// yle-tiksuttelija-slack-app
-// Antti Plathan 8 Feb 2021
-// antti.plathan@gmail.com
+'use strict'
 
 const { App, ExpressReceiver } = require('@slack/bolt');
 const awsServerlessExpress = require('aws-serverless-express');
-const sn = require('servicenow-rest-api');
+const axios = require('axios').default;
+//const sn = require('servicenow-rest-api');
 
 // Initialize your custom receiver
 const expressReceiver = new ExpressReceiver({
@@ -25,20 +24,14 @@ const app = new App({
 // Initialize your AWSServerlessExpress server using Bolt's ExpressReceiver
 const server = awsServerlessExpress.createServer(expressReceiver.app);
 
-// pitääkö tämäkin initialisoida expressReceiverillä?
-// Initialize ServiceNow
-const ServiceNow = new sn(process.env.TIKSU_INSTANCE, process.env.TIKSU_USERID, process.env.TIKSU_PASSWORD);
-
-// Kuunnellaan /tiksu -läsykomentoa ja avatan käyttäjälle uusi modaali
+// Bolt method to handle incoming Slack command event. A new modal view is created as a response.
 app.command('/tiksu', async ({ ack, body, client }) => {
   await ack();
 
   try {
-    // Call views.open with the built-in client
     const result = await client.views.open({
       // Pass a valid trigger_id within 3 seconds of receiving it
       trigger_id: body.trigger_id,
-      // View payload
       view: {
         "type": "modal",
         "submit": {
@@ -141,8 +134,6 @@ app.command('/tiksu', async ({ ack, body, client }) => {
         ]
       }
     });
-    // console.log(result); // tätä on turha enää logittaa
-    console.log('Modaali avattu onnistuneesti.')
   }
   catch (error) {
     console.error(error);
@@ -150,49 +141,34 @@ app.command('/tiksu', async ({ ack, body, client }) => {
 });
 
 
-// Handler for processing data sent from the new incident modal
+// Bolt method to handle incoming Slack view_submission events
 app.view('view-new-incident', async ({ ack, body, view, client }) => {
   await ack();
 
-  // Aloitetaan Tiksuun autentikoituminen mahdollisimman varhaisessa vaiheessa
-  try {
-    ServiceNow.Authenticate();
-    // Voiko tässäkin käyttää callback-funktiota? Tyyliin
-    // ServiceNow.Authenticate(res => { console.log(res) });
-  }
-  catch (error) {
-    console.error(error);
-  }
-
-  // Kerätään lomakkeella annetut tiedot
-  const user_id = body['user']['id'];
+  // Parse the 'view' payload to get user input from modal view's input blocks.
+  // View object is a dictionary consisting of modal's [block_id](s) and [action_id](s)
+  // Figuring out the data model can be a little trial and error, as the view payload's
+  // json may contain both simple key-value pairs, but also objects as the values.
   const short_description = view['state']['values']['short_description']['short_description'].value;
   const description = view['state']['values']['description']['description'].value;
   const u_app_or_prod_unit = view['state']['values']['u_app_or_prod_unit']['u_app_or_prod_unit']['selected_option'].value;
   
-  // Kysytään Slack API:lta käyttäjän profiilia ja sieltä sähköpostiosoite. Näitä tietoja ei saa suoraan eventin mukana
-  try {
-    var user = await client.users.profile.get({ user: user_id });
-    var user_email = user.profile.email;
+  // Full Slack user profile, we need this to get user's email address
+  const user_id = body['user']['id'];
+  const user = await client.users.profile.get({ user: user_id });
 
-    // Nyt kaikki tarvittava tieto uutta tikettiä varten on kasassa
-    var newIncidentData={
-      'caller_id': user_email,
-      'u_app_or_prod_unit': u_app_or_prod_unit,
-      'short_description': short_description,
-      'assignment_group': 'Service Desk',
-      'description': description
-    };
-    console.log(newIncidentData);  
-  }
-  catch (error) {
-    console.error(error);
-  }
+  const newIncidentData = {
+    'caller_id': user.profile.email,
+    'u_app_or_prod_unit': u_app_or_prod_unit,
+    'short_description': short_description,
+    'assignment_group': 'Service Desk',
+    'description': description
+  };
 
   let msg = "Jokin meni pieleen, koska tätä ei pitäisi koskaan nähdä.";
   // Tiksu-tiketin voi tehdä vain yleläinen. Koska js on event-pohjainen, aloitetaan 
   // nopeimmasta operaatiosta ja jätetään hidas rest-kutsu Tiksuun viimeiseksi.
-  if (!user_email.endsWith("@yle.fi")) {
+  if (!user.profile.email.endsWith("@yle.fi")) {
     msg = 'Tiketin voi tehdä vain käyttäjä, jolla on Ylen sähköpostiosoite.';
 
     try {
@@ -206,99 +182,109 @@ app.view('view-new-incident', async ({ ack, body, view, client }) => {
     }
   } else {
       // Eli nyt käyttäjällä tiedetään olevan yle-osoite
-      try{
-        ServiceNow.createNewTask(newIncidentData, 'incident', res => {
-          var tiksu_response = res;
-          var sys_id = tiksu_response.sys_id;
-          var tiksu_id = tiksu_response.number;
-          var responseDescription = tiksu_response.short_description;
-          var tiksu_url = 'https://yletest.service-now.com/incident.do?sys_id=' + sys_id;
-          msg = 'Tiketin lähettäminen onnistui. Voit seurata tikettisi etenemistä Tiksussa: <' + tiksu_url + '|' + tiksu_id + '>';
+      try {
+        const options = {
+            url:'https://' + process.env.TIKSU_INSTANCE + '/api/now/table/incident?sysparm_input_display_value=true&sysparm_display_value=true',
+            method:'post',
+            headers:{
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            data: newIncidentData,
+            auth:{
+                username: process.env.TIKSU_USERID,
+                password: process.env.TIKSU_PASSWORD
+            }
+        };
+        // Tämä on varsinainen kutsu ServiceNowiin
+        var tiksu_res = await axios(options);
+        var res = tiksu_res.data.result;
+        // console.log(res);
+
+        var tiksu_url = 'https://yletest.service-now.com/incident.do?sys_id=' + res.sys_id;
+        msg = 'Tiketin lähettäminen onnistui. Voit seurata tikettisi etenemistä Tiksussa: <' + tiksu_url + '|' + res.number + '>';
+
+        try {
+          await client.chat.postMessage({
+            channel: user_id,
+            text: msg,
+            blocks: [
+              {
+                "type": "header",
+                "text": {
+                  "type": "plain_text",
+                  "text": "Tiketistäsi on luotu uusi palvelupyyntö Ylen Service Deskiin",
+                  "emoji": false
+                }
+              },
+              {
+                "type": "divider"
+              },
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": res.number + ': *<' + tiksu_url + '|' + res.short_description + '>*'
+                }
+              },
+              {
+                "type": "section",
+                "fields": [
+                  {
+                    "type": "mrkdwn",
+                    "text": '*Järjestelmä tai tuotantoyksikkö:*\n' + res.u_app_or_prod_unit.display_value
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": '*Tiketti avattu:*\n' + res.opened_at
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": '*Komponentti:*\n' + res.cmdb_ci
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": '*Asiakas, jos tiedossa:*\n' + res.caller_id.display_value
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": '*Palvelujono:*\n' + res.assignment_group.display_value
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": '*Prioriteetti:*\n' + res.priority
+                  }
+                ]
+              },
+              {
+                "type": "divider"
+              },
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": res.description
+                }
+              }
+            ]
+          });
+        }
+        catch (error) {
+          console.error(error);
+          msg = 'Tiketin lähettäminen ei onnistunut.';
 
           try {
-            client.chat.postMessage({
+            await client.chat.postMessage({
               channel: user_id,
-              text: msg,
-              blocks: [
-                {
-                  "type": "header",
-                  "text": {
-                    "type": "plain_text",
-                    "text": "Tiketistäsi on luotu uusi palvelupyyntö Ylen Service Deskiin",
-                    "emoji": false
-                  }
-                },
-                {
-                  "type": "divider"
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": tiksu_response.number + ': *<' + tiksu_url + '|' + tiksu_response.short_description + '>*'
-                  }
-                },
-                {
-                  "type": "section",
-                  "fields": [
-                    {
-                      "type": "mrkdwn",
-                      "text": '*Järjestelmä tai tuotantoyksikkö:*\n' + tiksu_response.u_app_or_prod_unit.display_value
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": '*Tiketti avattu:*\n' + tiksu_response.opened_at
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": '*Komponentti:*\n' + tiksu_response.cmdb_ci
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": '*Asiakas, jos tiedossa:*\n' + tiksu_response.caller_id.display_value
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": '*Palvelujono:*\n' + tiksu_response.assignment_group.display_value
-                    },
-                    {
-                      "type": "mrkdwn",
-                      "text": '*Prioriteetti:*\n' + tiksu_response.priority
-                    }
-                  ]
-                },
-                {
-                  "type": "divider"
-                },
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": tiksu_response.description
-                  }
-                }
-              ]
+              text: msg
             });
           }
           catch (error) {
             console.error(error);
           }
-
-        });
-      }
-      catch (error) {
-        console.error(error);
-        msg = 'Tiketin lähettäminen ei onnistunut.';
-
-        try {
-          client.chat.postMessage({
-            channel: user_id,
-            text: msg
-          });
         }
-        catch (error) {
-          console.error(error);
-        }
+      } catch (err) {
+          console.error(err);
       }
     }
 });

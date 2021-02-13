@@ -10,6 +10,9 @@ provider:
   environment:
     SLACK_SIGNING_SECRET: ${env:SLACK_SIGNING_SECRET_TIKSUTTELIJA}
     SLACK_BOT_TOKEN: ${env:SLACK_BOT_TOKEN_TIKSUTTELIJA}
+    TIKSU_INSTANCE: ${env:TIKSU_INSTANCE}
+    TIKSU_USERID: ${env:TIKSU_USERID}
+    TIKSU_PASSWORD: ${env:TIKSU_PASSWORD}
 functions:
   slack:
     handler: app.handler
