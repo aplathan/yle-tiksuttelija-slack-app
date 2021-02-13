@@ -24,16 +24,15 @@ const app = new App({
 
 // Initialize your AWSServerlessExpress server using Bolt's ExpressReceiver
 const server = awsServerlessExpress.createServer(expressReceiver.app);
-// var event = req.apiGateway.event;
-// var context = req.apiGateway.context;
 
 // Getting the API Gateway event object
 //app.use(awsServerlessExpressMiddleware.eventContext());
-//app.get('/', (req, res) => {
-//  res.json(req.apiGateway.event);
-//})
-
-
+//var aws_event = req.apiGateway.event;
+//var aws_context = req.apiGateway.context;
+//console.log('aws_event:');
+//console.log(aws_event);
+//console.log('aws_context:');
+//console.log(aws_context);
 /*
 
 
@@ -42,25 +41,32 @@ https://stackoverflow.com/questions/61001210/https-get-request-from-within-a-lam
 
 
 */
-
+/*
 // Middleware to enrich context object that is available to all listeners
 async function enrichContext({ payload, client, context, next }) {
   // https://api.slack.com/methods/users.profile.get
-  const user = await client.users.profile.get({ user: user_id });
+  const user = await client.users.profile.get({ user: payload.user_id });
   
+  console.log('Context ennen middlewaren lisäyksiä:');
+  console.log(context);
+
   context.email = user.profile.email;
   context.real_name = user.profile.real_name;
-  context.tiksu_userid = process.env.TIKSU_USERID;
-  context.tiksu_password = process.env.TIKSU_PASSWORD;
-  context.tiksu_instance = process.env.TIKSU_INSTANCE;
+  context.TIKSU_USERID = process.env.TIKSU_USERID;
+  context.TIKSU_PASSWORD = process.env.TIKSU_PASSWORD;
+  context.TIKSU_INSTANCE = process.env.TIKSU_INSTANCE;
+
+  console.log('Context middlewaren käpälöinnin jälkeen:');
+  console.log(context);
 
   // Pass control to the next middleware function
   await next();
 }
+*/
 
 
 // Bolt method to handle incoming Slack command event. A new modal view is created as a response.
-app.command('/tiksu', enrichContext, async ({ ack, body, client, context }) => {
+app.command('/tiksu', async ({ ack, body, client }) => {
   await ack();
 
   try {
@@ -193,37 +199,22 @@ app.view('view-new-incident', async ({ ack, body, view, client }) => {
   const description = view['state']['values']['description']['description'].value;
   const u_app_or_prod_unit = view['state']['values']['u_app_or_prod_unit']['u_app_or_prod_unit']['selected_option'].value;
   
-  // Kysytään Slack API:lta käyttäjän profiilia ja sieltä sähköpostiosoite. Näitä tietoja ei saa suoraan eventin mukana
-  // Slack user profile data is privileged information, and is not passed freely with Slack events. For example,
-  // user ID is not 
+  // Full Slack user profile, we need this to get user's email address
+  const user = await client.users.profile.get({ user: user_id });
 
-  // LUE TÄSTÄ LISÄÄ: https://slack.dev/bolt-js/concepts#listener-middleware
-  // Saattaa ratkaista sekä käyttäjän nimen / emailin hanskaamisen sekä env.variablet
-  // tosin env. variableissa pitää olla tarkkana, että ne pysyy suojattuina
-  
-  The users:read.email OAuth scope is now required to access the email field in user objects returned by the users.list and users.info web API methods.
-  try {
-    var user = await client.users.profile.get({ user: user_id });
-    var user_email = user.profile.email;
-
-    // Nyt kaikki tarvittava tieto uutta tikettiä varten on kasassa
-    var newIncidentData={
-      'caller_id': user_email,
-      'u_app_or_prod_unit': u_app_or_prod_unit,
-      'short_description': short_description,
-      'assignment_group': 'Service Desk',
-      'description': description
-    };
-    console.log(newIncidentData);  
-  }
-  catch (error) {
-    console.error(error);
-  }
+  const newIncidentData = {
+    'caller_id': user.profile.email,
+    'u_app_or_prod_unit': u_app_or_prod_unit,
+    'short_description': short_description,
+    'assignment_group': 'Service Desk',
+    'description': description
+  };
 
   let msg = "Jokin meni pieleen, koska tätä ei pitäisi koskaan nähdä.";
   // Tiksu-tiketin voi tehdä vain yleläinen. Koska js on event-pohjainen, aloitetaan 
   // nopeimmasta operaatiosta ja jätetään hidas rest-kutsu Tiksuun viimeiseksi.
-  if (!user_email.endsWith("@yle.fi")) {
+  // if (!user_email.endsWith("@yle.fi")) {
+  if (!user.profile.email.endsWith("@yle.fi")) {
     msg = 'Tiketin voi tehdä vain käyttäjä, jolla on Ylen sähköpostiosoite.';
 
     try {
@@ -239,16 +230,17 @@ app.view('view-new-incident', async ({ ack, body, view, client }) => {
       // Eli nyt käyttäjällä tiedetään olevan yle-osoite
       try {
         const options = {
+            // url:'https://' + process.env.TIKSU_INSTANCE + '/api/now/table/incident?sysparm_input_display_value=true&sysparm_display_value=true',
             url:'https://' + process.env.TIKSU_INSTANCE + '/api/now/table/incident?sysparm_input_display_value=true&sysparm_display_value=true',
             method:'post',
             headers:{
-                'Accept':'application/json',
-                'Content-Type':'application/json'
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
             },
-            data:newIncidentData,
+            data: newIncidentData,
             auth:{
-                username:process.env.TIKSU_USERID,
-                password:process.env.TIKSU_PASSWORD
+                username: process.env.TIKSU_USERID,
+                password: process.env.TIKSU_PASSWORD
             }
         };
         // Tämä on varsinainen kutsu ServiceNowiin
